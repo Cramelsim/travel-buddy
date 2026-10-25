@@ -11,6 +11,7 @@ from django.contrib.auth.hashers import check_password, make_password
 from django.core.exceptions import ValidationError
 from django.core.validators import MaxValueValidator, MinValueValidator
 from django.db import models
+from django.db.models import Avg, Count
 
 APP_LABEL = "buddy"
 
@@ -66,24 +67,33 @@ class Destination(models.Model):
     def __str__(self):
         return self.name
 
+    def rating_summary(self):
+        # List views annotate these two values to avoid one query per destination.
+        if hasattr(self, "review_count"):
+            count, average = self.review_count, self.average_rating
+        else:
+            agg = self.reviews.aggregate(count=Count("id"), average=Avg("rating"))
+            count, average = agg["count"], agg["average"]
+        return count, (round(average, 1) if average is not None else None)
+
     def to_dict(self, detail=False):
+        count, average = self.rating_summary()
         data = {
             "id": self.id,
             "name": self.name,
             "category": self.category,
             "description": self.description,
             "image_url": self.image_url,
+            "review_count": count,
+            "average_rating": average,
         }
-        reviews = list(self.reviews.select_related("user"))
-        data["review_count"] = len(reviews)
-        data["average_rating"] = (
-            round(sum(r.rating for r in reviews) / len(reviews), 1) if reviews else None
-        )
         if detail:
-            data["reviews"] = [r.to_dict() for r in reviews]
-            data["users"] = [
-                {"id": u.id, "username": u.username} for u in self.users.distinct()
-            ]
+            data["reviews"] = [r.to_dict() for r in self.reviews.select_related("user")]
+            # Users with an active (not cancelled) trip to this destination.
+            travelers = User.objects.filter(
+                trips__destination=self, trips__status=Trip.BOOKED
+            ).distinct()
+            data["users"] = [{"id": u.id, "username": u.username} for u in travelers]
         return data
 
 
@@ -116,6 +126,8 @@ class Trip(models.Model):
         if isinstance(self.start_date, date) and isinstance(self.end_date, date):
             if self.end_date < self.start_date:
                 raise ValidationError({"end_date": "End date cannot be before start date."})
+            if self._state.adding and self.start_date < date.today():
+                raise ValidationError({"start_date": "Start date cannot be in the past."})
 
     def to_dict(self):
         return {
