@@ -1,9 +1,8 @@
-import { Link, NavLink, useNavigate } from "react-router-dom";
+import { Link, NavLink } from "react-router-dom";
 import { useAuth } from "../auth.jsx";
 
 export default function Navbar() {
   const { user, logout } = useAuth();
-  const navigate = useNavigate();
 
   return (
     <header className="navbar">
@@ -19,13 +18,7 @@ export default function Navbar() {
             <>
               <NavLink to="/bookings">My bookings</NavLink>
               <NavLink to="/account">{user.username}</NavLink>
-              <button
-                className="btn btn-ghost"
-                onClick={() => {
-                  logout();
-                  navigate("/");
-                }}
-              >
+              <button className="btn btn-ghost" onClick={logout}>
                 Log out
               </button>
             </>
