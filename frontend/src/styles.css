@@ -100,3 +100,4 @@ main.container { padding-block: 2rem 4rem; }
 .status-cancelled { background: var(--warn-bg); color: var(--danger); }
 .trip.cancelled img { filter: grayscale(1); opacity: 0.7; }
 @media (max-width: 560px) { .trip { grid-template-columns: 1fr; } .trip img { height: 160px; } }
+.toolbar-search { font: inherit; padding: 0.55rem 1rem; border: 1px solid var(--border); border-radius: 999px; min-width: 240px; background: #fff; }
